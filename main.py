@@ -1,7 +1,5 @@
-import string
 import sys
 import os
-import pandas as pd
 from PyQt5.QtWidgets import QWidget, QApplication, QTextEdit, QLabel, QPushButton, QVBoxLayout, QFileDialog, \
     QHBoxLayout, QTextBrowser
 from PyQt5.QtWidgets import QAction,qApp,QMainWindow
@@ -27,13 +25,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import networkx as nx
 import matplotlib.pyplot as plt
 
-import gensim
 
 import numpy as np
-
-import evaluate
-
-
 
 from Cumle import Cumle, Model
 
@@ -148,12 +141,6 @@ class MainWindow(QWidget):
         with open(dosya_ismi[0], "w") as file:
             file.write(self.yazi_alani.toPlainText())
 
-    def yazdir(self,metin):
-
-         print(metin)
-         #self.yazi_alani.setText(metin)
-         self.yazi_alani.append(str(metin))
-
 
 
 class Menu(QMainWindow):
@@ -220,6 +207,7 @@ class Summary():
 
         words=[]
         for sentence in cumleler:
+            #print(sentence)
             main_sentence=sentence
             main_metin+="{}".format(sentence)
             for i in sentence.split(" "):
@@ -282,6 +270,7 @@ class Summary():
         benzerlikMatrisi=self.BenzerlikHesapla(cleaned_text, wordEmbeddings, cumleler)
 
         Model_List,List_gecen_node_sayisi=self.CalculateP3(benzerlikMatrisi,benzerlik_orani[0])
+        benzerlik_orani.clear()
         for i in range(len(Model_List)):
             Cumle_List[i].id=i
             Cumle_List[i].cumle_benzerlik_orani_gecen_node_sayisi=List_gecen_node_sayisi[i]
@@ -333,20 +322,37 @@ class Summary():
                 ozet+="{}. ".format(sortedList[x].cumle)
                 List.append(sortedList[x])
         #print(ozet)
-        print(main_metin)
+        #print(main_metin)
         cumle_skoru.clear()
         print(ozet)
         rouge=Rouge()
-        skorlar=rouge.get_scores(ozet,main_metin)
-        #print(skorlar)
-        rouge_1=skorlar[0]['rouge-1']
-        rouge1_r=rouge_1['r']
-        rouge1_p=rouge_1['p']
-        rouge1_f=rouge_1['f']
-        #print(rouge1_r)
-        #print(rouge1_p)
-        #print(rouge1_f)
-        ozet+="\n\nROUGE1-R:{}\nROUGE1-P:{}\nROUGE1-F1:{}".format(rouge1_r,rouge1_p,rouge1_f)
+        if ozet=="":
+            ozet="Özet Çıkarılamadı!"
+        if ozet !="Özet Çıkarılamadı!":
+
+            skorlar=rouge.get_scores(ozet,main_metin)
+            #print(skorlar)
+            rouge_1=skorlar[0]['rouge-1']
+            rouge1_r=round(rouge_1['r'],3)
+            rouge1_p=round(rouge_1['p'],3)
+            rouge1_f=round(rouge_1['f'],3)
+
+            rouge_2 = skorlar[0]['rouge-2']
+            rouge2_r = round(rouge_2['r'], 3)
+            rouge2_p = round(rouge_2['p'], 3)
+            rouge2_f = round(rouge_2['f'], 3)
+
+            rouge_l = skorlar[0]['rouge-l']
+            rougel_r = round(rouge_l['r'], 3)
+            rougel_p = round(rouge_l['p'], 3)
+            rougel_f = round(rouge_l['f'], 3)
+            #print(rouge1_r)
+            #print(rouge1_p)
+            #print(rouge1_f)
+            ozet+="\n\nROUGE1-R:{}\nROUGE1-P:{}\nROUGE1-F:{}".format(rouge1_r,rouge1_p,rouge1_f)
+            ozet+="\n\nROUGE2-R:{}\nROUGE2-P:{}\nROUGE2-F:{}".format(rouge2_r,rouge2_p,rouge2_f)
+            ozet+="\n\nROUGEL-R:{}\nROUGEL-P:{}\nROUGEL-F:{}".format(rougel_r,rougel_p,rougel_f)
+
 
 
 
@@ -402,7 +408,7 @@ class Summary():
             labels=labels,
             width=width,
             edge_color='gray',
-            node_color='skyblue',
+            node_color='orange',
             node_size=500,
             font_size=10,
             font_weight='bold'
@@ -459,12 +465,12 @@ class Summary():
     def tfidfValueCalculate(self,word_list):
         vector = TfidfVectorizer()
         tfidfVectors = vector.fit_transform(word_list)
-        feature_names = vector.get_feature_names_out()
+        kelimeler = vector.get_feature_names_out()
 
         modelList = []
         for i, document in enumerate(word_list):
             for j, feature_index in enumerate(tfidfVectors[i].indices):
-                featureAD = feature_names[feature_index]
+                featureAD = kelimeler[feature_index]
                 tfidfDeger = round(tfidfVectors[i, feature_index], 3)
                 model = Model(featureAD, tfidfDeger)
                 modelList.append(model)
@@ -516,7 +522,7 @@ class Summary():
         for word in doc:
             if word.pos_ == 'PROPN' and len(word.text)>1:
                 # özel isimleri cğmlelerden siliyorum
-               # print(word.text)
+                #print(word.text)
                 cumle = cumle.replace(word.text, "")
                 ozel_isim_count += 1
         cumle=cumle.strip(' ')
@@ -528,6 +534,7 @@ class Summary():
 
             if (self.IsContainDigit(kelime)):
                 # sayı içeren kelimleri cümleden siliyorum
+                #print(kelime)
                 cumle = cumle.replace(kelime, "")
                 number_count += 1
         cumle=cumle.strip(' ')
@@ -558,8 +565,6 @@ class Summary():
         f.close()
         return wordEmbeddings
     def BenzerlikHesapla(self,text,wordEmbeddings,sentences):
-
-
 
         vectors = []
         for i in text:
